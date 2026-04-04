@@ -66,9 +66,9 @@ st.subheader("Clustered Data")
 st.dataframe(df.head())
 
 # =========================
-# Linear Regression
+# Better Regression Model (ONLY NUMERIC FEATURES)
 # =========================
-X = df.drop(['Yearly Amount Spent','Cluster'], axis=1)
+X = df[['Avg. Session Length', 'Time on App', 'Time on Website', 'Length of Membership']]
 y = df['Yearly Amount Spent']
 
 X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3, random_state=42)
@@ -76,8 +76,7 @@ X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3, random_st
 lr = LinearRegression()
 lr.fit(X_train, y_train)
 
-st.subheader("Linear Regression Score")
-st.write(lr.score(X_test, y_test))
+st.write("Model Score:", lr.score(X_test, y_test))
 
 # =========================
 # Classification
@@ -113,3 +112,35 @@ fig4, ax4 = plt.subplots()
 ax4.barh(features, importances)
 ax4.set_title("Feature Importance")
 st.pyplot(fig4)
+
+# =========================
+# USER INPUT PREDICTION
+# =========================
+st.subheader("🔮 Predict Customer Spending")
+
+st.write("Enter customer details:")
+
+avg_session = st.number_input("Avg. Session Length", min_value=0.0)
+time_app = st.number_input("Time on App", min_value=0.0)
+time_web = st.number_input("Time on Website", min_value=0.0)
+membership = st.number_input("Length of Membership", min_value=0.0)
+
+if st.button("Predict Spending"):
+    
+    # Create input dataframe
+    input_data = pd.DataFrame({
+        'Avg. Session Length': [avg_session],
+        'Time on App': [time_app],
+        'Time on Website': [time_web],
+        'Length of Membership': [membership],
+        'Email': [0],
+        'Address': [0],
+        'Avatar': [0]
+    })
+
+    # Ensure same column order
+    input_data = input_data[X.columns]
+
+    prediction = lr.predict(input_data)
+
+    st.success(f"Estimated Yearly Spending: ${prediction[0]:.2f}")
