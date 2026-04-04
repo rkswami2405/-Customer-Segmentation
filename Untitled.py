@@ -118,28 +118,20 @@ st.pyplot(fig4)
 # =========================
 st.subheader("🔮 Predict Customer Spending")
 
-st.write("Enter customer details:")
-
 avg_session = st.number_input("Avg. Session Length", min_value=0.0)
 time_app = st.number_input("Time on App", min_value=0.0)
 time_web = st.number_input("Time on Website", min_value=0.0)
 membership = st.number_input("Length of Membership", min_value=0.0)
 
 if st.button("Predict Spending"):
-    
-    # Create input dataframe
+
+    # Create input with ONLY required columns
     input_data = pd.DataFrame({
         'Avg. Session Length': [avg_session],
         'Time on App': [time_app],
         'Time on Website': [time_web],
-        'Length of Membership': [membership],
-        'Email': [0],
-        'Address': [0],
-        'Avatar': [0]
+        'Length of Membership': [membership]
     })
-
-    # Ensure same column order
-    input_data = input_data[X.columns]
 
     prediction = lr.predict(input_data)
 
