@@ -156,11 +156,13 @@ elif mode == "📊 Visualization":
     ax5.set_title("Avg Spending by Membership")
     st.pyplot(fig5)
 
-    # Heatmap
+    # Heatmap (FIXED)
     st.subheader("🌡️ Heatmap")
 
+    numeric_df = df.select_dtypes(include=['number'])
+
     fig6, ax6 = plt.subplots()
-    sns.heatmap(df.corr(), annot=True, ax=ax6)
+    sns.heatmap(numeric_df.corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax6)
     st.pyplot(fig6)
 
     # Pie Chart
