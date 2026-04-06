@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from sklearn.linear_model import LinearRegression
 
@@ -16,7 +18,7 @@ def load_data():
 df = load_data()
 
 # =========================
-# TRAIN MODEL (ONLY REQUIRED FEATURES)
+# MODEL TRAINING
 # =========================
 FEATURES = [
     'Avg. Session Length',
@@ -34,11 +36,11 @@ model.fit(X, y)
 # =========================
 # SIDEBAR
 # =========================
-st.sidebar.title("Select Mode")
+st.sidebar.title("📊 Navigation")
 
 mode = st.sidebar.radio(
-    "",
-    ["Manual Prediction", "CSV Upload Analysis", "🔍 Bulk Scanner"]
+    "Select Mode",
+    ["Manual Prediction", "CSV Upload Analysis", "📊 Visualization", "🔍 Bulk Scanner"]
 )
 
 # =========================
@@ -75,7 +77,7 @@ if mode == "Manual Prediction":
             st.success(f"💰 Estimated Spending: ${prediction:.2f}")
 
 # =========================
-# 2. CSV ANALYSIS
+# 2. CSV UPLOAD ANALYSIS
 # =========================
 elif mode == "CSV Upload Analysis":
 
@@ -104,16 +106,89 @@ elif mode == "CSV Upload Analysis":
                 st.dataframe(data)
 
 # =========================
-# 3. BULK SCANNER
+# 3. VISUALIZATION DASHBOARD
+# =========================
+elif mode == "📊 Visualization":
+
+    st.title("📊 Data Visualization Dashboard")
+
+    st.subheader("Dataset Preview")
+    st.dataframe(df.head())
+
+    # Scatter Plots
+    st.subheader("🔵 Scatter Plots")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig1, ax1 = plt.subplots()
+        ax1.scatter(df['Time on App'], df['Yearly Amount Spent'])
+        ax1.set_title("Time on App vs Spending")
+        st.pyplot(fig1)
+
+    with col2:
+        fig2, ax2 = plt.subplots()
+        ax2.scatter(df['Time on Website'], df['Yearly Amount Spent'])
+        ax2.set_title("Website Time vs Spending")
+        st.pyplot(fig2)
+
+    # Histogram
+    st.subheader("📊 Histogram")
+
+    fig3, ax3 = plt.subplots()
+    ax3.hist(df['Yearly Amount Spent'], bins=30)
+    ax3.set_title("Spending Distribution")
+    st.pyplot(fig3)
+
+    # Line Plot
+    st.subheader("📈 Line Plot")
+
+    fig4, ax4 = plt.subplots()
+    ax4.plot(df['Length of Membership'], df['Yearly Amount Spent'])
+    ax4.set_title("Membership vs Spending")
+    st.pyplot(fig4)
+
+    # Bar Plot
+    st.subheader("📊 Bar Plot")
+
+    fig5, ax5 = plt.subplots()
+    df.groupby('Length of Membership')['Yearly Amount Spent'].mean().plot(kind='bar', ax=ax5)
+    ax5.set_title("Avg Spending by Membership")
+    st.pyplot(fig5)
+
+    # Heatmap
+    st.subheader("🌡️ Heatmap")
+
+    fig6, ax6 = plt.subplots()
+    sns.heatmap(df.corr(), annot=True, ax=ax6)
+    st.pyplot(fig6)
+
+    # Pie Chart
+    st.subheader("🥧 Spending Categories")
+
+    df_temp = df.copy()
+    df_temp['Category'] = pd.cut(
+        df_temp['Yearly Amount Spent'],
+        bins=3,
+        labels=["Low", "Medium", "High"]
+    )
+
+    category_counts = df_temp['Category'].value_counts()
+
+    fig7, ax7 = plt.subplots()
+    ax7.pie(category_counts, labels=category_counts.index, autopct='%1.1f%%')
+    ax7.set_title("Customer Spending Distribution")
+    st.pyplot(fig7)
+
+# =========================
+# 4. BULK SCANNER
 # =========================
 elif mode == "🔍 Bulk Scanner":
 
     st.title("💰 Ecommerce Prediction Dashboard")
     st.markdown("### 🔍 Bulk Customer Scanner")
 
-    # =========================
-    # DOWNLOAD SAMPLE
-    # =========================
+    # Download Sample
     st.markdown("## 1. Download Sample Template")
 
     sample_df = pd.DataFrame({
@@ -138,9 +213,7 @@ elif mode == "🔍 Bulk Scanner":
 
     st.divider()
 
-    # =========================
-    # UPLOAD FILE
-    # =========================
+    # Upload
     st.markdown("## 2. Upload File to Scan")
 
     uploaded_file = st.file_uploader(
@@ -150,7 +223,6 @@ elif mode == "🔍 Bulk Scanner":
 
     if uploaded_file is not None:
 
-        # Detect file type
         if uploaded_file.name.endswith(".csv"):
             data = pd.read_csv(uploaded_file)
         elif uploaded_file.name.endswith(".xlsx"):
@@ -163,14 +235,12 @@ elif mode == "🔍 Bulk Scanner":
 
         if st.button("🔍 Run Bulk Prediction"):
 
-            # ✅ Check required columns
             missing_cols = [col for col in FEATURES if col not in data.columns]
 
             if missing_cols:
                 st.error(f"❌ Missing columns: {missing_cols}")
                 st.stop()
 
-            # ✅ Select correct columns
             input_data = data[FEATURES]
 
             try:
@@ -178,7 +248,7 @@ elif mode == "🔍 Bulk Scanner":
 
                 data['Predicted Spending'] = predictions
 
-                # ✅ Handle negative values
+                # Handle negative values
                 data['Predicted Spending'] = data['Predicted Spending'].apply(
                     lambda x: x if x >= 0 else None
                 )
