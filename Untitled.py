@@ -12,127 +12,187 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
-st.title("Ecommerce Customer Analysis")
+# =========================
+# PAGE CONFIG
+# =========================
+st.set_page_config(page_title="Ecommerce ML App", layout="wide")
 
 # =========================
-# Load Data
+# SIDEBAR
 # =========================
-df = pd.read_csv("Ecommerce Customers.csv")
-
-st.subheader("Dataset Preview")
-st.dataframe(df.head())
-
-st.subheader("Dataset Info")
-st.write(df.describe())
+st.sidebar.title("📊 Navigation")
+option = st.sidebar.radio(
+    "Go to:",
+    ["Home", "Data Preview", "Visualization", "Clustering", "Models", "Prediction"]
+)
 
 # =========================
-# Visualization
+# LOAD DATA
 # =========================
-st.subheader("Visualizations")
+@st.cache_data
+def load_data():
+    df = pd.read_csv("Ecommerce Customers.csv")
+    return df
 
-fig1, ax1 = plt.subplots()
-ax1.scatter(df['Time on Website'], df['Yearly Amount Spent'])
-ax1.set_title("Website Time vs Spending")
-st.pyplot(fig1)
-
-fig2, ax2 = plt.subplots()
-ax2.scatter(df['Time on App'], df['Yearly Amount Spent'])
-ax2.set_title("App Time vs Spending")
-st.pyplot(fig2)
-
-fig3, ax3 = plt.subplots()
-ax3.hist(df['Yearly Amount Spent'], bins=30)
-ax3.set_title("Spending Distribution")
-st.pyplot(fig3)
+df = load_data()
 
 # =========================
-# Encoding
+# HOME
 # =========================
-le = LabelEncoder()
-df['Email'] = le.fit_transform(df['Email'])
-df['Address'] = le.fit_transform(df['Address'])
-df['Avatar'] = le.fit_transform(df['Avatar'])
-
-# =========================
-# Clustering
-# =========================
-scaler = StandardScaler()
-scaled_data = scaler.fit_transform(df)
-
-kmeans = KMeans(n_clusters=5, random_state=42)
-df['Cluster'] = kmeans.fit_predict(scaled_data)
-
-st.subheader("Clustered Data")
-st.dataframe(df.head())
+if option == "Home":
+    st.title("🛒 Ecommerce Customer Analysis App")
+    st.write("""
+    This app performs:
+    - Customer Segmentation (KMeans)
+    - Regression (Spending Prediction)
+    - Classification (Decision Tree & Random Forest)
+    """)
 
 # =========================
-# Better Regression Model (ONLY NUMERIC FEATURES)
+# DATA PREVIEW
 # =========================
-X = df[['Avg. Session Length', 'Time on App', 'Time on Website', 'Length of Membership']]
-y = df['Yearly Amount Spent']
-
-X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3, random_state=42)
-
-lr = LinearRegression()
-lr.fit(X_train, y_train)
-
-st.write("Model Score:", lr.score(X_test, y_test))
+elif option == "Data Preview":
+    st.title("📂 Dataset")
+    st.dataframe(df.head())
+    st.subheader("Statistics")
+    st.write(df.describe())
 
 # =========================
-# Classification
+# VISUALIZATION
 # =========================
-X = df.drop(['Cluster'], axis=1)
-y = df['Cluster']
+elif option == "Visualization":
+    st.title("📊 Data Visualization")
 
-X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3, random_state=42)
+    col1, col2 = st.columns(2)
 
-# Decision Tree
-dt = DecisionTreeClassifier(max_depth=5, random_state=42)
-dt.fit(X_train, y_train)
+    with col1:
+        fig1, ax1 = plt.subplots()
+        ax1.scatter(df['Time on Website'], df['Yearly Amount Spent'])
+        ax1.set_title("Website Time vs Spending")
+        st.pyplot(fig1)
 
-pred_dt = dt.predict(X_test)
+    with col2:
+        fig2, ax2 = plt.subplots()
+        ax2.scatter(df['Time on App'], df['Yearly Amount Spent'])
+        ax2.set_title("App Time vs Spending")
+        st.pyplot(fig2)
 
-# Random Forest
-rf = RandomForestClassifier(n_estimators=100, random_state=42)
-rf.fit(X_train, y_train)
-
-pred_rf = rf.predict(X_test)
-
-st.subheader("Model Accuracy")
-st.write("Decision Tree:", accuracy_score(y_test, pred_dt))
-st.write("Random Forest:", accuracy_score(y_test, pred_rf))
-
-# =========================
-# Feature Importance
-# =========================
-importances = rf.feature_importances_
-features = X.columns
-
-fig4, ax4 = plt.subplots()
-ax4.barh(features, importances)
-ax4.set_title("Feature Importance")
-st.pyplot(fig4)
+    fig3, ax3 = plt.subplots()
+    ax3.hist(df['Yearly Amount Spent'], bins=30)
+    ax3.set_title("Spending Distribution")
+    st.pyplot(fig3)
 
 # =========================
-# USER INPUT PREDICTION
+# CLUSTERING
 # =========================
-st.subheader("🔮 Predict Customer Spending")
+elif option == "Clustering":
+    st.title("🔵 Customer Segmentation (KMeans)")
 
-avg_session = st.number_input("Avg. Session Length", min_value=0.0)
-time_app = st.number_input("Time on App", min_value=0.0)
-time_web = st.number_input("Time on Website", min_value=0.0)
-membership = st.number_input("Length of Membership", min_value=0.0)
+    df_encoded = df.copy()
 
-if st.button("Predict Spending"):
+    # Encoding
+    le = LabelEncoder()
+    df_encoded['Email'] = le.fit_transform(df_encoded['Email'])
+    df_encoded['Address'] = le.fit_transform(df_encoded['Address'])
+    df_encoded['Avatar'] = le.fit_transform(df_encoded['Avatar'])
 
-    # Create input with ONLY required columns
-    input_data = pd.DataFrame({
-        'Avg. Session Length': [avg_session],
-        'Time on App': [time_app],
-        'Time on Website': [time_web],
-        'Length of Membership': [membership]
-    })
+    # Scaling
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(df_encoded)
 
-    prediction = lr.predict(input_data)
+    k = st.slider("Select number of clusters", 2, 10, 5)
 
-    st.success(f"Estimated Yearly Spending: ${prediction[0]:.2f}")
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    df_encoded['Cluster'] = kmeans.fit_predict(scaled_data)
+
+    st.write("Clustered Data")
+    st.dataframe(df_encoded.head())
+
+    fig, ax = plt.subplots()
+    sns.scatterplot(
+        x=df_encoded['Time on App'],
+        y=df_encoded['Yearly Amount Spent'],
+        hue=df_encoded['Cluster'],
+        ax=ax
+    )
+    st.pyplot(fig)
+
+# =========================
+# MODELS
+# =========================
+elif option == "Models":
+    st.title("🤖 Machine Learning Models")
+
+    df_model = df.copy()
+
+    # Encoding
+    le = LabelEncoder()
+    df_model['Email'] = le.fit_transform(df_model['Email'])
+    df_model['Address'] = le.fit_transform(df_model['Address'])
+    df_model['Avatar'] = le.fit_transform(df_model['Avatar'])
+
+    # KMeans for target
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(df_model)
+
+    kmeans = KMeans(n_clusters=5, random_state=42)
+    df_model['Cluster'] = kmeans.fit_predict(scaled_data)
+
+    # Classification
+    X = df_model.drop('Cluster', axis=1)
+    y = df_model['Cluster']
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
+
+    # Decision Tree
+    dt = DecisionTreeClassifier(max_depth=5)
+    dt.fit(X_train, y_train)
+    pred_dt = dt.predict(X_test)
+
+    # Random Forest
+    rf = RandomForestClassifier(n_estimators=100)
+    rf.fit(X_train, y_train)
+    pred_rf = rf.predict(X_test)
+
+    st.subheader("Accuracy")
+    st.write("Decision Tree:", accuracy_score(y_test, pred_dt))
+    st.write("Random Forest:", accuracy_score(y_test, pred_rf))
+
+    # Feature Importance
+    st.subheader("Feature Importance")
+    importances = rf.feature_importances_
+
+    fig, ax = plt.subplots()
+    ax.barh(X.columns, importances)
+    st.pyplot(fig)
+
+# =========================
+# PREDICTION
+# =========================
+elif option == "Prediction":
+    st.title("🔮 Predict Customer Spending")
+
+    avg_session = st.number_input("Avg. Session Length", 0.0)
+    time_app = st.number_input("Time on App", 0.0)
+    time_web = st.number_input("Time on Website", 0.0)
+    membership = st.number_input("Length of Membership", 0.0)
+
+    # Train model
+    X = df[['Avg. Session Length', 'Time on App', 'Time on Website', 'Length of Membership']]
+    y = df['Yearly Amount Spent']
+
+    model = LinearRegression()
+    model.fit(X, y)
+
+    if st.button("Predict"):
+        input_data = pd.DataFrame({
+            'Avg. Session Length': [avg_session],
+            'Time on App': [time_app],
+            'Time on Website': [time_web],
+            'Length of Membership': [membership]
+        })
+
+        prediction = model.predict(input_data)
+        st.success(f"Estimated Spending: ${prediction[0]:.2f}")
