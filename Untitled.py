@@ -185,12 +185,11 @@ elif option == "Prediction":
 
     model = LinearRegression()
     model.fit(X, y)
+        if st.button("Predict"):
 
-   if st.button("Predict"):
-
-    input_data = pd.DataFrame({
-        'Avg. Session Length': [avg_session],
-        'Time on App': [time_app],
-        'Time on Website': [time_web],
-        'Length of Membership': [membership]
-    })
+            input_data = pd.DataFrame({
+                'Avg. Session Length': [avg_session],
+                'Time on App': [time_app],
+                'Time on Website': [time_web],
+                'Length of Membership': [membership]
+            })
