@@ -108,64 +108,99 @@ elif mode == "CSV Upload Analysis":
 # =========================
 # 3. VISUALIZATION DASHBOARD
 # =========================
+# =========================
+# 3. VISUALIZATION DASHBOARD (PLOTLY)
+# =========================
 elif mode == "📊 Visualization":
 
-    st.title("📊 Data Visualization Dashboard")
+    st.title("📊 Interactive Data Visualization Dashboard")
 
     st.subheader("Dataset Preview")
     st.dataframe(df.head())
 
+    # =========================
     # Scatter Plots
+    # =========================
     st.subheader("🔵 Scatter Plots")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        fig1, ax1 = plt.subplots()
-        ax1.scatter(df['Time on App'], df['Yearly Amount Spent'])
-        ax1.set_title("Time on App vs Spending")
-        st.pyplot(fig1)
+        fig1 = px.scatter(
+            df,
+            x='Time on App',
+            y='Yearly Amount Spent',
+            title="Time on App vs Spending"
+        )
+        st.plotly_chart(fig1, use_container_width=True)
 
     with col2:
-        fig2, ax2 = plt.subplots()
-        ax2.scatter(df['Time on Website'], df['Yearly Amount Spent'])
-        ax2.set_title("Website Time vs Spending")
-        st.pyplot(fig2)
+        fig2 = px.scatter(
+            df,
+            x='Time on Website',
+            y='Yearly Amount Spent',
+            title="Website Time vs Spending"
+        )
+        st.plotly_chart(fig2, use_container_width=True)
 
+    # =========================
     # Histogram
+    # =========================
     st.subheader("📊 Histogram")
 
-    fig3, ax3 = plt.subplots()
-    ax3.hist(df['Yearly Amount Spent'], bins=30)
-    ax3.set_title("Spending Distribution")
-    st.pyplot(fig3)
+    fig3 = px.histogram(
+        df,
+        x='Yearly Amount Spent',
+        nbins=30,
+        title="Spending Distribution"
+    )
+    st.plotly_chart(fig3, use_container_width=True)
 
+    # =========================
     # Line Plot
+    # =========================
     st.subheader("📈 Line Plot")
 
-    fig4, ax4 = plt.subplots()
-    ax4.plot(df['Length of Membership'], df['Yearly Amount Spent'])
-    ax4.set_title("Membership vs Spending")
-    st.pyplot(fig4)
+    fig4 = px.line(
+        df,
+        x='Length of Membership',
+        y='Yearly Amount Spent',
+        title="Membership vs Spending"
+    )
+    st.plotly_chart(fig4, use_container_width=True)
 
+    # =========================
     # Bar Plot
+    # =========================
     st.subheader("📊 Bar Plot")
 
-    fig5, ax5 = plt.subplots()
-    df.groupby('Length of Membership')['Yearly Amount Spent'].mean().plot(kind='bar', ax=ax5)
-    ax5.set_title("Avg Spending by Membership")
-    st.pyplot(fig5)
+    bar_data = df.groupby('Length of Membership')['Yearly Amount Spent'].mean().reset_index()
 
+    fig5 = px.bar(
+        bar_data,
+        x='Length of Membership',
+        y='Yearly Amount Spent',
+        title="Average Spending by Membership"
+    )
+    st.plotly_chart(fig5, use_container_width=True)
+
+    # =========================
     # Heatmap (FIXED)
+    # =========================
     st.subheader("🌡️ Heatmap")
 
     numeric_df = df.select_dtypes(include=['number'])
 
-    fig6, ax6 = plt.subplots()
-    sns.heatmap(numeric_df.corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax6)
-    st.pyplot(fig6)
+    fig6 = px.imshow(
+        numeric_df.corr(),
+        text_auto=True,
+        title="Correlation Heatmap"
+    )
+    st.plotly_chart(fig6, use_container_width=True)
 
+    # =========================
     # Pie Chart
+    # =========================
     st.subheader("🥧 Spending Categories")
 
     df_temp = df.copy()
@@ -175,12 +210,16 @@ elif mode == "📊 Visualization":
         labels=["Low", "Medium", "High"]
     )
 
-    category_counts = df_temp['Category'].value_counts()
+    category_counts = df_temp['Category'].value_counts().reset_index()
+    category_counts.columns = ['Category', 'Count']
 
-    fig7, ax7 = plt.subplots()
-    ax7.pie(category_counts, labels=category_counts.index, autopct='%1.1f%%')
-    ax7.set_title("Customer Spending Distribution")
-    st.pyplot(fig7)
+    fig7 = px.pie(
+        category_counts,
+        names='Category',
+        values='Count',
+        title="Customer Spending Distribution"
+    )
+    st.plotly_chart(fig7, use_container_width=True)
 
 # =========================
 # 4. BULK SCANNER
