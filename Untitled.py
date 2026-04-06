@@ -1,16 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import base64
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn.linear_model import LinearRegression
 
 st.set_page_config(page_title="Ecommerce Dashboard", layout="wide")
 
 # =========================
-# LOAD DATA & TRAIN MODEL
+# LOAD DATA
 # =========================
 @st.cache_data
 def load_data():
@@ -18,7 +15,17 @@ def load_data():
 
 df = load_data()
 
-X = df[['Avg. Session Length', 'Time on App', 'Time on Website', 'Length of Membership']]
+# =========================
+# TRAIN MODEL (ONLY REQUIRED FEATURES)
+# =========================
+FEATURES = [
+    'Avg. Session Length',
+    'Time on App',
+    'Time on Website',
+    'Length of Membership'
+]
+
+X = df[FEATURES]
 y = df['Yearly Amount Spent']
 
 model = LinearRegression()
@@ -35,11 +42,11 @@ mode = st.sidebar.radio(
 )
 
 # =========================
-# MANUAL PREDICTION
+# 1. MANUAL PREDICTION
 # =========================
 if mode == "Manual Prediction":
 
-    st.title("🛒 Ecommerce Customer Prediction")
+    st.title("🛒 Customer Spending Prediction")
 
     col1, col2 = st.columns(2)
 
@@ -63,12 +70,12 @@ if mode == "Manual Prediction":
         prediction = model.predict(input_data)[0]
 
         if prediction < 0:
-            st.error("❌ Invalid prediction! Please enter realistic values.")
+            st.error("❌ Invalid prediction! Spending cannot be negative.")
         else:
             st.success(f"💰 Estimated Spending: ${prediction:.2f}")
 
 # =========================
-# CSV ANALYSIS
+# 2. CSV ANALYSIS
 # =========================
 elif mode == "CSV Upload Analysis":
 
@@ -83,23 +90,31 @@ elif mode == "CSV Upload Analysis":
         st.dataframe(data.head())
 
         if st.button("Run Predictions"):
-            predictions = model.predict(data)
 
-            data['Predicted Spending'] = predictions
-            st.dataframe(data)
+            missing_cols = [col for col in FEATURES if col not in data.columns]
+
+            if missing_cols:
+                st.error(f"❌ Missing columns: {missing_cols}")
+            else:
+                input_data = data[FEATURES]
+
+                predictions = model.predict(input_data)
+
+                data['Predicted Spending'] = predictions
+                st.dataframe(data)
 
 # =========================
-# BULK SCANNER (LIKE YOUR IMAGE)
+# 3. BULK SCANNER
 # =========================
 elif mode == "🔍 Bulk Scanner":
 
-    st.title("💰 Ecommerce Spending Prediction Dashboard")
+    st.title("💰 Ecommerce Prediction Dashboard")
     st.markdown("### 🔍 Bulk Customer Scanner")
 
     # =========================
-    # DOWNLOAD SECTION
+    # DOWNLOAD SAMPLE
     # =========================
-    st.markdown("## 1. Download Sample Templates")
+    st.markdown("## 1. Download Sample Template")
 
     sample_df = pd.DataFrame({
         'Avg. Session Length': [30],
@@ -113,18 +128,18 @@ elif mode == "🔍 Bulk Scanner":
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.download_button("📄 Download CSV Sample", csv, "sample.csv", "text/csv")
+        st.download_button("📄 CSV Sample", csv, "sample.csv")
 
     with col2:
-        st.download_button("📊 Download Excel Sample", csv, "sample.xlsx")
+        st.download_button("📊 Excel Sample", csv, "sample.xlsx")
 
     with col3:
-        st.download_button("📦 Download JSON Sample", sample_df.to_json(), "sample.json")
+        st.download_button("📦 JSON Sample", sample_df.to_json(), "sample.json")
 
     st.divider()
 
     # =========================
-    # UPLOAD SECTION
+    # UPLOAD FILE
     # =========================
     st.markdown("## 2. Upload File to Scan")
 
@@ -148,9 +163,25 @@ elif mode == "🔍 Bulk Scanner":
 
         if st.button("🔍 Run Bulk Prediction"):
 
+            # ✅ Check required columns
+            missing_cols = [col for col in FEATURES if col not in data.columns]
+
+            if missing_cols:
+                st.error(f"❌ Missing columns: {missing_cols}")
+                st.stop()
+
+            # ✅ Select correct columns
+            input_data = data[FEATURES]
+
             try:
-                predictions = model.predict(data)
+                predictions = model.predict(input_data)
+
                 data['Predicted Spending'] = predictions
+
+                # ✅ Handle negative values
+                data['Predicted Spending'] = data['Predicted Spending'].apply(
+                    lambda x: x if x >= 0 else None
+                )
 
                 st.success("✅ Prediction Completed")
                 st.dataframe(data)
