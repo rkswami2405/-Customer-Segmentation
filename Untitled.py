@@ -186,13 +186,11 @@ elif option == "Prediction":
     model = LinearRegression()
     model.fit(X, y)
 
-    if st.button("Predict"):
-        input_data = pd.DataFrame({
-            'Avg. Session Length': [avg_session],
-            'Time on App': [time_app],
-            'Time on Website': [time_web],
-            'Length of Membership': [membership]
-        })
+   if st.button("Predict"):
 
-        prediction = model.predict(input_data)
-        st.success(f"Estimated Spending: ${prediction[0]:.2f}")
+    input_data = pd.DataFrame({
+        'Avg. Session Length': [avg_session],
+        'Time on App': [time_app],
+        'Time on Website': [time_web],
+        'Length of Membership': [membership]
+    })
