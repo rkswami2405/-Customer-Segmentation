@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 
-
 from sklearn.linear_model import LinearRegression
 
 st.set_page_config(page_title="Ecommerce Dashboard", layout="wide")
@@ -107,9 +106,6 @@ elif mode == "CSV Upload Analysis":
                 data['Predicted Spending'] = predictions
                 st.dataframe(data)
 
-# =========================
-# 3. VISUALIZATION DASHBOARD
-# =========================
 # =========================
 # 3. VISUALIZATION DASHBOARD (PLOTLY)
 # =========================
