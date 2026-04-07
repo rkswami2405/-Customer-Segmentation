@@ -31,6 +31,9 @@ y = df['Yearly Amount Spent']
 model = LinearRegression()
 model.fit(X, y)
 
+# ✅ Minimum realistic value (IMPORTANT FIX)
+min_spending = df['Yearly Amount Spent'].min()
+
 # =========================
 # SIDEBAR
 # =========================
@@ -69,8 +72,8 @@ if mode == "Manual Prediction":
 
         prediction = model.predict(input_data)[0]
 
-        # ✅ FIX: Prevent negative prediction
-        prediction = max(0, prediction)
+        # ✅ FIX: Replace negative/zero values
+        prediction = prediction if prediction > 0 else min_spending
 
         st.success(f"💰 Estimated Spending: ${prediction:,.2f}")
 
@@ -98,10 +101,11 @@ elif mode == "CSV Upload Analysis":
             else:
                 predictions = model.predict(data[FEATURES])
 
-                # ✅ FIX: Remove negative predictions
-                predictions = np.maximum(0, predictions)
+                # ✅ FIX: Replace negative/zero values
+                predictions = np.where(predictions <= 0, min_spending, predictions)
 
                 data['Predicted Spending'] = predictions
+
                 st.success("✅ Prediction Completed")
                 st.dataframe(data)
 
@@ -238,8 +242,8 @@ elif mode == "🔍 Bulk Scanner":
             try:
                 predictions = model.predict(data[FEATURES])
 
-                # ✅ FIX: Remove negative predictions
-                predictions = np.maximum(0, predictions)
+                # ✅ FIX: Replace negative/zero values
+                predictions = np.where(predictions <= 0, min_spending, predictions)
 
                 data['Predicted Spending'] = predictions
 
