@@ -2,11 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
 
-st.set_page_config(page_title="Ecommerce AI Dashboard", layout="wide")
-
-st.title("🛒 Ecommerce Customer Intelligence Dashboard")
+st.set_page_config(page_title="Ecommerce Dashboard", layout="wide")
 
 # =========================
 # LOAD DATA
@@ -18,7 +16,7 @@ def load_data():
 df = load_data()
 
 # =========================
-# MODEL TRAINING (UPGRADED)
+# MODEL TRAINING
 # =========================
 FEATURES = [
     'Avg. Session Length',
@@ -30,12 +28,7 @@ FEATURES = [
 X = df[FEATURES]
 y = df['Yearly Amount Spent']
 
-# 🔥 Random Forest Model
-model = RandomForestRegressor(
-    n_estimators=200,
-    max_depth=10,
-    random_state=42
-)
+model = LinearRegression()
 model.fit(X, y)
 
 # =========================
@@ -45,170 +38,167 @@ st.sidebar.title("📊 Navigation")
 
 mode = st.sidebar.radio(
     "Select Mode",
-    ["🔮 Manual Prediction", "📂 CSV Upload Analysis", "📊 Visualization", "🔍 Bulk Scanner"]
+    ["Manual Prediction", "CSV Upload Analysis", "📊 Visualization", "🔍 Bulk Scanner"]
 )
 
 # =========================
-# 🔮 MANUAL PREDICTION
+# 1. MANUAL PREDICTION
 # =========================
-if mode == "🔮 Manual Prediction":
+if mode == "Manual Prediction":
 
-    st.header("Enter Customer Details")
+    st.title("🛒 Customer Spending Prediction")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        avg_session = st.number_input("Avg. Session Length", 0.0, 50.0, 30.0)
-        time_app = st.number_input("Time on App", 0.0, 50.0, 12.0)
+        avg_session = st.number_input("Avg. Session Length", min_value=0.0)
+        time_app = st.number_input("Time on App", min_value=0.0)
 
     with col2:
-        time_web = st.number_input("Time on Website", 0.0, 50.0, 40.0)
-        membership = st.number_input("Length of Membership", 0.0, 10.0, 3.0)
+        time_web = st.number_input("Time on Website", min_value=0.0)
+        membership = st.number_input("Length of Membership", min_value=0.0)
 
     if st.button("Predict Spending"):
 
-        input_df = pd.DataFrame([{
-            'Avg. Session Length': avg_session,
-            'Time on App': time_app,
-            'Time on Website': time_web,
-            'Length of Membership': membership
-        }])
+        input_data = pd.DataFrame({
+            'Avg. Session Length': [avg_session],
+            'Time on App': [time_app],
+            'Time on Website': [time_web],
+            'Length of Membership': [membership]
+        })
 
-        prediction = model.predict(input_df)[0]
+        prediction = model.predict(input_data)[0]
 
-        # Extra safety
+        # ✅ FIX: Prevent negative prediction
         prediction = max(0, prediction)
 
         st.success(f"💰 Estimated Spending: ${prediction:,.2f}")
 
 # =========================
-# 📂 CSV UPLOAD ANALYSIS
+# 2. CSV UPLOAD ANALYSIS
 # =========================
-elif mode == "📂 CSV Upload Analysis":
+elif mode == "CSV Upload Analysis":
 
-    st.header("📊 Smart Data Dashboard")
+    st.title("📂 CSV Upload Analysis")
 
-    data_source = st.radio(
-        "Select Data Source",
-        ["Use Default Dataset", "Upload CSV"]
-    )
+    file = st.file_uploader("Upload CSV file", type=["csv"])
 
-    data = None
+    if file is not None:
+        data = pd.read_csv(file)
 
-    if data_source == "Use Default Dataset":
-        data = df.copy()
-        st.info("Using default dataset")
-    else:
-        uploaded = st.file_uploader("Upload CSV", type=["csv"])
-        if uploaded:
-            data = pd.read_csv(uploaded)
+        st.subheader("Preview")
+        st.dataframe(data.head())
 
-    if data is not None:
+        if st.button("Run Predictions"):
 
-        # Performance optimization
-        if len(data) > 5000:
-            st.warning("Large dataset detected → sampling 5000 rows")
-            data = data.sample(5000)
+            missing_cols = [col for col in FEATURES if col not in data.columns]
 
-        # Prediction
-        if all(col in data.columns for col in FEATURES):
-            preds = model.predict(data[FEATURES])
-            preds = np.maximum(0, preds)
-            data["Predicted Spending"] = preds
+            if missing_cols:
+                st.error(f"❌ Missing columns: {missing_cols}")
+            else:
+                predictions = model.predict(data[FEATURES])
 
-        # ================= KPI =================
-        st.subheader("📌 Key Insights")
+                # ✅ FIX: Remove negative predictions
+                predictions = np.maximum(0, predictions)
 
-        c1, c2, c3, c4 = st.columns(4)
-
-        if "Predicted Spending" in data.columns:
-            c1.metric("Avg Spending", f"${data['Predicted Spending'].mean():,.0f}")
-            c2.metric("Max Spending", f"${data['Predicted Spending'].max():,.0f}")
-        else:
-            c1.metric("Avg Membership", f"{data['Length of Membership'].mean():.2f}")
-            c2.metric("Max Membership", f"{data['Length of Membership'].max():.2f}")
-
-        c3.metric("Avg App Time", f"{data['Time on App'].mean():.2f}")
-        c4.metric("Total Records", f"{len(data):,}")
-
-        # ================= VISUALIZATION =================
-        st.subheader("📊 Interactive Visualization")
-
-        selected_col = st.selectbox("Select Column", data.columns)
-
-        if data[selected_col].dtype in ['int64', 'float64']:
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.plotly_chart(
-                    px.histogram(data, x=selected_col, title="Distribution"),
-                    use_container_width=True
-                )
-
-            with col2:
-                st.plotly_chart(
-                    px.box(data, y=selected_col, title="Spread"),
-                    use_container_width=True
-                )
-        else:
-            vc = data[selected_col].value_counts().reset_index()
-            vc.columns = [selected_col, "Count"]
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.plotly_chart(px.bar(vc, x=selected_col, y="Count"),
-                                use_container_width=True)
-
-            with col2:
-                st.plotly_chart(px.pie(vc, names=selected_col, values="Count"),
-                                use_container_width=True)
-
-        # ================= HEATMAP =================
-        st.subheader("🌡️ Correlation Heatmap")
-
-        numeric_df = data.select_dtypes(include=['number'])
-
-        st.plotly_chart(
-            px.imshow(numeric_df.corr(), text_auto=True),
-            use_container_width=True
-        )
+                data['Predicted Spending'] = predictions
+                st.success("✅ Prediction Completed")
+                st.dataframe(data)
 
 # =========================
-# 📊 VISUALIZATION MODE
+# 3. VISUALIZATION DASHBOARD
 # =========================
 elif mode == "📊 Visualization":
 
-    st.header("📊 Data Visualization Dashboard")
+    st.title("📊 Interactive Data Visualization Dashboard")
 
+    st.subheader("Dataset Preview")
     st.dataframe(df.head())
+
+    # Scatter
+    st.subheader("🔵 Scatter Plots")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.plotly_chart(
-            px.scatter(df, x='Time on App', y='Yearly Amount Spent'),
+            px.scatter(df, x='Time on App', y='Yearly Amount Spent',
+                       title="Time on App vs Spending"),
             use_container_width=True
         )
 
     with col2:
         st.plotly_chart(
-            px.scatter(df, x='Time on Website', y='Yearly Amount Spent'),
+            px.scatter(df, x='Time on Website', y='Yearly Amount Spent',
+                       title="Website Time vs Spending"),
             use_container_width=True
         )
 
+    # Histogram
+    st.subheader("📊 Distribution")
+
     st.plotly_chart(
-        px.histogram(df, x='Yearly Amount Spent'),
+        px.histogram(df, x='Yearly Amount Spent', nbins=30,
+                     title="Spending Distribution"),
+        use_container_width=True
+    )
+
+    # Line
+    st.subheader("📈 Membership Impact")
+
+    st.plotly_chart(
+        px.line(df, x='Length of Membership', y='Yearly Amount Spent',
+                title="Membership vs Spending"),
+        use_container_width=True
+    )
+
+    # Bar
+    st.subheader("📊 Average Spending")
+
+    bar_data = df.groupby('Length of Membership')['Yearly Amount Spent'].mean().reset_index()
+
+    st.plotly_chart(
+        px.bar(bar_data, x='Length of Membership', y='Yearly Amount Spent',
+               title="Avg Spending by Membership"),
+        use_container_width=True
+    )
+
+    # Heatmap
+    st.subheader("🌡️ Correlation Heatmap")
+
+    numeric_df = df.select_dtypes(include=['number'])
+
+    st.plotly_chart(
+        px.imshow(numeric_df.corr(), text_auto=True,
+                  title="Correlation Matrix"),
+        use_container_width=True
+    )
+
+    # Pie
+    st.subheader("🥧 Spending Categories")
+
+    df_temp = df.copy()
+    df_temp['Category'] = pd.cut(
+        df_temp['Yearly Amount Spent'],
+        bins=3,
+        labels=["Low", "Medium", "High"]
+    )
+
+    counts = df_temp['Category'].value_counts().reset_index()
+    counts.columns = ['Category', 'Count']
+
+    st.plotly_chart(
+        px.pie(counts, names='Category', values='Count',
+               title="Customer Segments"),
         use_container_width=True
     )
 
 # =========================
-# 🔍 BULK SCANNER
+# 4. BULK SCANNER
 # =========================
 elif mode == "🔍 Bulk Scanner":
 
-    st.header("🔎 Bulk Customer Scanner")
+    st.title("🔍 Bulk Customer Scanner")
 
     sample_df = pd.DataFrame({
         'Avg. Session Length': [30],
@@ -217,9 +207,9 @@ elif mode == "🔍 Bulk Scanner":
         'Length of Membership': [3]
     })
 
-    st.download_button("📄 Download Sample CSV",
-                       sample_df.to_csv(index=False),
-                       "sample.csv")
+    csv = sample_df.to_csv(index=False).encode('utf-8')
+
+    st.download_button("📄 Download Sample CSV", csv, "sample.csv")
 
     uploaded_file = st.file_uploader(
         "Upload CSV / Excel / JSON",
@@ -239,20 +229,22 @@ elif mode == "🔍 Bulk Scanner":
 
         if st.button("🚀 Run Bulk Prediction"):
 
-            if not all(col in data.columns for col in FEATURES):
-                st.error("❌ Missing required columns")
+            missing_cols = [col for col in FEATURES if col not in data.columns]
+
+            if missing_cols:
+                st.error(f"❌ Missing columns: {missing_cols}")
                 st.stop()
 
-            preds = model.predict(data[FEATURES])
-            preds = np.maximum(0, preds)
+            try:
+                predictions = model.predict(data[FEATURES])
 
-            data["Predicted Spending"] = preds
+                # ✅ FIX: Remove negative predictions
+                predictions = np.maximum(0, predictions)
 
-            st.success("✅ Completed")
-            st.dataframe(data.head(10))
+                data['Predicted Spending'] = predictions
 
-            st.download_button(
-                "📥 Download Results",
-                data.to_csv(index=False),
-                "results.csv"
-            )
+                st.success("✅ Prediction Completed")
+                st.dataframe(data)
+
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
