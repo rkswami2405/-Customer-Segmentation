@@ -30,7 +30,6 @@ y = df['Yearly Amount Spent']
 
 model = LinearRegression()
 model.fit(X, y)
-
 # =========================
 # SIDEBAR
 # =========================
@@ -60,6 +59,11 @@ if mode == "Manual Prediction":
 
     if st.button("Predict Spending"):
 
+    # Prevent empty/default input
+        if avg_session == 0 and time_app == 0 and time_web == 0 and membership == 0:
+            st.warning("⚠️ Please enter valid input values.")
+            st.stop()
+
         input_data = pd.DataFrame({
             'Avg. Session Length': [avg_session],
             'Time on App': [time_app],
@@ -69,8 +73,8 @@ if mode == "Manual Prediction":
 
         prediction = model.predict(input_data)[0]
 
-        # ✅ FIX: Prevent negative prediction
-        prediction = max(0, prediction)
+    # ✅ FIX: Replace negative/zero with minimum dataset value
+        prediction = prediction if prediction > 0 else min_spending
 
         st.success(f"💰 Estimated Spending: ${prediction:,.2f}")
 
@@ -99,7 +103,7 @@ elif mode == "CSV Upload Analysis":
                 predictions = model.predict(data[FEATURES])
 
                 # ✅ FIX: Remove negative predictions
-                predictions = np.maximum(0, predictions)
+                predictions = np.where(predictions <= 0, min_spending, predictions)
 
                 data['Predicted Spending'] = predictions
                 st.success("✅ Prediction Completed")
@@ -239,8 +243,7 @@ elif mode == "🔍 Bulk Scanner":
                 predictions = model.predict(data[FEATURES])
 
                 # ✅ FIX: Remove negative predictions
-                predictions = np.maximum(0, predictions)
-
+                predictions = np.where(predictions <= 0, min_spending, predictions)
                 data['Predicted Spending'] = predictions
 
                 st.success("✅ Prediction Completed")
