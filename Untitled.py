@@ -2,9 +2,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 
-st.set_page_config(page_title="Ecommerce Dashboard", layout="wide")
+st.set_page_config(page_title="Ecommerce AI Dashboard", layout="wide")
+
+st.title("🛒 Customer Spending Prediction Dashboard")
 
 # =========================
 # LOAD DATA
@@ -15,11 +17,8 @@ def load_data():
 
 df = load_data()
 
-# ✅ FIX: Define min_spending HERE (VERY IMPORTANT)
-min_spending = df['Yearly Amount Spent'].min()
-
 # =========================
-# MODEL TRAINING
+# MODEL TRAINING (UPGRADED)
 # =========================
 FEATURES = [
     'Avg. Session Length',
@@ -31,8 +30,16 @@ FEATURES = [
 X = df[FEATURES]
 y = df['Yearly Amount Spent']
 
-model = LinearRegression()
+model = RandomForestRegressor(
+    n_estimators=200,
+    max_depth=10,
+    random_state=42
+)
+
 model.fit(X, y)
+
+# ✅ Minimum realistic value
+min_spending = df['Yearly Amount Spent'].min()
 
 # =========================
 # SIDEBAR
@@ -41,25 +48,25 @@ st.sidebar.title("📊 Navigation")
 
 mode = st.sidebar.radio(
     "Select Mode",
-    ["Manual Prediction", "CSV Upload Analysis", "📊 Visualization", "🔍 Bulk Scanner"]
+    ["🔮 Manual Prediction", "📂 CSV Upload Analysis", "📊 Visualization", "🔍 Bulk Scanner"]
 )
 
 # =========================
-# 1. MANUAL PREDICTION
+# 🔮 MANUAL PREDICTION
 # =========================
-if mode == "Manual Prediction":
+if mode == "🔮 Manual Prediction":
 
-    st.title("🛒 Customer Spending Prediction")
+    st.header("Enter Customer Details")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        avg_session = st.number_input("Avg. Session Length", min_value=0.0)
-        time_app = st.number_input("Time on App", min_value=0.0)
+        avg_session = st.number_input("Avg. Session Length", min_value=0.0, step=0.1)
+        time_app = st.number_input("Time on App", min_value=0.0, step=0.1)
 
     with col2:
-        time_web = st.number_input("Time on Website", min_value=0.0)
-        membership = st.number_input("Length of Membership", min_value=0.0)
+        time_web = st.number_input("Time on Website", min_value=0.0, step=0.1)
+        membership = st.number_input("Length of Membership", min_value=0.0, step=0.1)
 
     if st.button("Predict Spending"):
 
@@ -69,58 +76,57 @@ if mode == "Manual Prediction":
             st.warning("⚠️ Please enter valid input values.")
             st.stop()
 
-        input_data = pd.DataFrame({
-            'Avg. Session Length': [avg_session],
-            'Time on App': [time_app],
-            'Time on Website': [time_web],
-            'Length of Membership': [membership]
-        })
+        input_df = pd.DataFrame([{
+            'Avg. Session Length': avg_session,
+            'Time on App': time_app,
+            'Time on Website': time_web,
+            'Length of Membership': membership
+        }])
 
-        prediction = model.predict(input_data)[0]
+        prediction = model.predict(input_df)[0]
 
-        # ✅ FIX: Replace negative/zero
+        # ✅ Fix negative/zero
         prediction = prediction if prediction > 0 else min_spending
+
+        prediction = round(prediction, 2)
 
         st.success(f"💰 Estimated Spending: ${prediction:,.2f}")
 
 # =========================
-# 2. CSV UPLOAD ANALYSIS
+# 📂 CSV UPLOAD ANALYSIS
 # =========================
-elif mode == "CSV Upload Analysis":
+elif mode == "📂 CSV Upload Analysis":
 
-    st.title("📂 CSV Upload Analysis")
+    st.header("CSV Prediction Tool")
 
     file = st.file_uploader("Upload CSV file", type=["csv"])
 
     if file is not None:
         data = pd.read_csv(file)
 
-        st.subheader("Preview")
         st.dataframe(data.head())
 
         if st.button("Run Predictions"):
 
-            missing_cols = [col for col in FEATURES if col not in data.columns]
+            if not all(col in data.columns for col in FEATURES):
+                st.error("❌ Missing required columns")
+                st.stop()
 
-            if missing_cols:
-                st.error(f"❌ Missing columns: {missing_cols}")
-            else:
-                predictions = model.predict(data[FEATURES])
+            preds = model.predict(data[FEATURES])
 
-                # ✅ FIX: Replace negative/zero
-                predictions = np.where(predictions <= 0, min_spending, predictions)
+            preds = np.where(preds <= 0, min_spending, preds)
 
-                data['Predicted Spending'] = predictions
+            data['Predicted Spending'] = preds
 
-                st.success("✅ Prediction Completed")
-                st.dataframe(data)
+            st.success("✅ Prediction Completed")
+            st.dataframe(data)
 
 # =========================
-# 3. VISUALIZATION
+# 📊 VISUALIZATION
 # =========================
 elif mode == "📊 Visualization":
 
-    st.title("📊 Interactive Data Visualization Dashboard")
+    st.header("Data Visualization Dashboard")
 
     st.dataframe(df.head())
 
@@ -137,12 +143,35 @@ elif mode == "📊 Visualization":
     st.plotly_chart(px.histogram(df, x='Yearly Amount Spent'),
                     use_container_width=True)
 
+    # Feature Importance
+    st.subheader("🔥 Feature Importance")
+
+    importance = pd.DataFrame({
+        "Feature": FEATURES,
+        "Importance": model.feature_importances_
+    }).sort_values(by="Importance", ascending=False)
+
+    st.bar_chart(importance.set_index("Feature"))
+
 # =========================
-# 4. BULK SCANNER
+# 🔍 BULK SCANNER
 # =========================
 elif mode == "🔍 Bulk Scanner":
 
-    st.title("🔍 Bulk Customer Scanner")
+    st.header("Bulk Prediction Tool")
+
+    sample_df = pd.DataFrame({
+        'Avg. Session Length': [30],
+        'Time on App': [12],
+        'Time on Website': [40],
+        'Length of Membership': [3]
+    })
+
+    st.download_button(
+        "📄 Download Sample CSV",
+        sample_df.to_csv(index=False),
+        "sample.csv"
+    )
 
     uploaded_file = st.file_uploader(
         "Upload CSV / Excel / JSON",
@@ -160,24 +189,23 @@ elif mode == "🔍 Bulk Scanner":
 
         st.dataframe(data.head())
 
-        if st.button("🚀 Run Bulk Prediction"):
+        if st.button("Run Bulk Prediction"):
 
-            missing_cols = [col for col in FEATURES if col not in data.columns]
-
-            if missing_cols:
-                st.error(f"❌ Missing columns: {missing_cols}")
+            if not all(col in data.columns for col in FEATURES):
+                st.error("❌ Missing required columns")
                 st.stop()
 
-            try:
-                predictions = model.predict(data[FEATURES])
+            preds = model.predict(data[FEATURES])
 
-                # ✅ FIX: Replace negative/zero
-                predictions = np.where(predictions <= 0, min_spending, predictions)
+            preds = np.where(preds <= 0, min_spending, preds)
 
-                data['Predicted Spending'] = predictions
+            data["Predicted Spending"] = preds
 
-                st.success("✅ Prediction Completed")
-                st.dataframe(data)
+            st.success("✅ Completed")
+            st.dataframe(data.head(10))
 
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
+            st.download_button(
+                "📥 Download Results",
+                data.to_csv(index=False),
+                "results.csv"
+            )
