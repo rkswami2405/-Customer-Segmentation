@@ -15,6 +15,9 @@ def load_data():
 
 df = load_data()
 
+# ✅ FIX: Define min_spending HERE (VERY IMPORTANT)
+min_spending = df['Yearly Amount Spent'].min()
+
 # =========================
 # MODEL TRAINING
 # =========================
@@ -30,6 +33,7 @@ y = df['Yearly Amount Spent']
 
 model = LinearRegression()
 model.fit(X, y)
+
 # =========================
 # SIDEBAR
 # =========================
@@ -59,8 +63,9 @@ if mode == "Manual Prediction":
 
     if st.button("Predict Spending"):
 
-    # Prevent empty/default input
-        if avg_session == 0 and time_app == 0 and time_web == 0 and membership == 0:
+        # ✅ Prevent empty input
+        if (avg_session == 0 and time_app == 0 and 
+            time_web == 0 and membership == 0):
             st.warning("⚠️ Please enter valid input values.")
             st.stop()
 
@@ -73,7 +78,7 @@ if mode == "Manual Prediction":
 
         prediction = model.predict(input_data)[0]
 
-    # ✅ FIX: Replace negative/zero with minimum dataset value
+        # ✅ FIX: Replace negative/zero
         prediction = prediction if prediction > 0 else min_spending
 
         st.success(f"💰 Estimated Spending: ${prediction:,.2f}")
@@ -102,100 +107,35 @@ elif mode == "CSV Upload Analysis":
             else:
                 predictions = model.predict(data[FEATURES])
 
-                # ✅ FIX: Remove negative predictions
+                # ✅ FIX: Replace negative/zero
                 predictions = np.where(predictions <= 0, min_spending, predictions)
 
                 data['Predicted Spending'] = predictions
+
                 st.success("✅ Prediction Completed")
                 st.dataframe(data)
 
 # =========================
-# 3. VISUALIZATION DASHBOARD
+# 3. VISUALIZATION
 # =========================
 elif mode == "📊 Visualization":
 
     st.title("📊 Interactive Data Visualization Dashboard")
 
-    st.subheader("Dataset Preview")
     st.dataframe(df.head())
-
-    # Scatter
-    st.subheader("🔵 Scatter Plots")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.plotly_chart(
-            px.scatter(df, x='Time on App', y='Yearly Amount Spent',
-                       title="Time on App vs Spending"),
-            use_container_width=True
-        )
+        st.plotly_chart(px.scatter(df, x='Time on App', y='Yearly Amount Spent'),
+                        use_container_width=True)
 
     with col2:
-        st.plotly_chart(
-            px.scatter(df, x='Time on Website', y='Yearly Amount Spent',
-                       title="Website Time vs Spending"),
-            use_container_width=True
-        )
+        st.plotly_chart(px.scatter(df, x='Time on Website', y='Yearly Amount Spent'),
+                        use_container_width=True)
 
-    # Histogram
-    st.subheader("📊 Distribution")
-
-    st.plotly_chart(
-        px.histogram(df, x='Yearly Amount Spent', nbins=30,
-                     title="Spending Distribution"),
-        use_container_width=True
-    )
-
-    # Line
-    st.subheader("📈 Membership Impact")
-
-    st.plotly_chart(
-        px.line(df, x='Length of Membership', y='Yearly Amount Spent',
-                title="Membership vs Spending"),
-        use_container_width=True
-    )
-
-    # Bar
-    st.subheader("📊 Average Spending")
-
-    bar_data = df.groupby('Length of Membership')['Yearly Amount Spent'].mean().reset_index()
-
-    st.plotly_chart(
-        px.bar(bar_data, x='Length of Membership', y='Yearly Amount Spent',
-               title="Avg Spending by Membership"),
-        use_container_width=True
-    )
-
-    # Heatmap
-    st.subheader("🌡️ Correlation Heatmap")
-
-    numeric_df = df.select_dtypes(include=['number'])
-
-    st.plotly_chart(
-        px.imshow(numeric_df.corr(), text_auto=True,
-                  title="Correlation Matrix"),
-        use_container_width=True
-    )
-
-    # Pie
-    st.subheader("🥧 Spending Categories")
-
-    df_temp = df.copy()
-    df_temp['Category'] = pd.cut(
-        df_temp['Yearly Amount Spent'],
-        bins=3,
-        labels=["Low", "Medium", "High"]
-    )
-
-    counts = df_temp['Category'].value_counts().reset_index()
-    counts.columns = ['Category', 'Count']
-
-    st.plotly_chart(
-        px.pie(counts, names='Category', values='Count',
-               title="Customer Segments"),
-        use_container_width=True
-    )
+    st.plotly_chart(px.histogram(df, x='Yearly Amount Spent'),
+                    use_container_width=True)
 
 # =========================
 # 4. BULK SCANNER
@@ -203,17 +143,6 @@ elif mode == "📊 Visualization":
 elif mode == "🔍 Bulk Scanner":
 
     st.title("🔍 Bulk Customer Scanner")
-
-    sample_df = pd.DataFrame({
-        'Avg. Session Length': [30],
-        'Time on App': [12],
-        'Time on Website': [40],
-        'Length of Membership': [3]
-    })
-
-    csv = sample_df.to_csv(index=False).encode('utf-8')
-
-    st.download_button("📄 Download Sample CSV", csv, "sample.csv")
 
     uploaded_file = st.file_uploader(
         "Upload CSV / Excel / JSON",
@@ -242,8 +171,9 @@ elif mode == "🔍 Bulk Scanner":
             try:
                 predictions = model.predict(data[FEATURES])
 
-                # ✅ FIX: Remove negative predictions
+                # ✅ FIX: Replace negative/zero
                 predictions = np.where(predictions <= 0, min_spending, predictions)
+
                 data['Predicted Spending'] = predictions
 
                 st.success("✅ Prediction Completed")
